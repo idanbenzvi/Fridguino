@@ -6,7 +6,8 @@ AlertMe alert;
 DHT dht(4, DHT21);
 
 const uint8_t config_pin = 12;
-const double criticalTemprature = -10;
+const double criticalTemprature = 10;
+const double criticalDelta = 3
  
 String to_email = "PUTMAILHERE@gmail.com";  // The email address to send the message to
 String to_sms = "5551234567@carriersmsportal.com"; // Look up your carrier's Email-to-SMS gateway here: https://martinfitzpatrick.name/list-of-email-to-sms-gateways/
@@ -66,7 +67,6 @@ tempratureReading measureTemprature() {
       Serial.println(" %");
       return new tempratureReading(null,dht.getTemperatureC());
     case DHT_ERROR_CHECKSUM:
-      Serial.println("Checksum error");
       return new tempratureReading("Error: Checksum error, sensor is broken",999);
     case DHT_ERROR_TIMEOUT:
       return new tempratureReading("Error: timeout error, sensor is broken",999);
@@ -85,7 +85,8 @@ void loop() {
     delay(60 * 15 * 1000)
     //todo add retry mechanism
     double currTemprature = measureTemprature()
-    //todo add derivative algo. 
+     
+    //double deltaTemprature = 
 
 
     

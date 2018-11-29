@@ -1,6 +1,9 @@
 #include <ESP8266WiFi.h>
 #include "AlertMe.h" // This includes all of the references to WiFiManager and ArduinoJSON that we need
+#include <TroykaDHT.h>
+
 AlertMe alert;
+DHT dht(4, DHT21);
 
 const uint8_t config_pin = 12;
 const double criticalTemprature = -10;
@@ -11,9 +14,8 @@ String to_sms = "5551234567@carriersmsportal.com"; // Look up your carrier's Ema
 String subject_line = "Fridge Temprature Alert";
 String message;
 
-protected int currTemprature =0 ;
-
-
+double previousTemp ; 
+double currTemp ;
 /**
  * Fridguino by Idan Ben Zvi and Itay Ceder (c) 12/2018
  * The sketch sets up a wifi access point initially to get mail and wifi credentials.
@@ -25,15 +27,12 @@ protected int currTemprature =0 ;
  * add SIM Gprs capability
  */
     void setup() {
-      
+      dht.begin();
       Serial.begin(115200); // the speed in which the serial USB connection is set
       delay(200);
-      
-     
      
       // We start by connecting to a WiFi network
      
-     Serial.begin(250000);
   pinMode(config_pin,INPUT_PULLUP);
   if(config_pin == LOW){ // Short pin to GND for config AP
     alert.config();
@@ -50,10 +49,30 @@ protected int currTemprature =0 ;
   Serial.println("Connected!");
     }
 
-double measureTemprature() {
-  currTemp = -17.5;
+struct tempratureReading {
+  String errorMsg;
+  double temp;
+}
 
-  return currTemp;
+tempratureReading measureTemprature() {
+  dht.read();
+  switch(dht.getState()) {    
+    case DHT_OK:
+      Serial.print("Temperature = ");
+      Serial.print(dht.getTemperatureC());
+      Serial.println(" C \t");
+      Serial.print("Humidity = ");
+      Serial.print(dht.getHumidity());
+      Serial.println(" %");
+      return new tempratureReading(null,dht.getTemperatureC());
+    case DHT_ERROR_CHECKSUM:
+      Serial.println("Checksum error");
+      return new tempratureReading("Error: Checksum error, sensor is broken",999);
+    case DHT_ERROR_TIMEOUT:
+      return new tempratureReading("Error: timeout error, sensor is broken",999);
+    case DHT_ERROR_NO_REPLY:
+      return new tempratureReading("Error: no response error, sensor is broken",999);
+  }
 }
 
 boolean sendNotificaiton() {
@@ -64,8 +83,11 @@ boolean sendNotificaiton() {
 void loop() {
     while(true) {
     delay(60 * 15 * 1000)
+    //todo add retry mechanism
+    double currTemprature = measureTemprature()
+    //todo add derivative algo. 
 
-    currTemprature = measureTemprature
+
     
     message = "Device  "+ String(ESP.getChipId())+" : Temprature warning! the current temprature is " + currTemprature ;
 

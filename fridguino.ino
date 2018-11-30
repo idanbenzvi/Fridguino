@@ -6,17 +6,17 @@ AlertMe alert;
 DHT dht(4, DHT21);
 
 const uint8_t config_pin = 12;
-const double criticalTemprature = 10;
-const double criticalDelta = 3
+const double CRITCAL_TEMP = 10;
+const double CRITCAL_DELTA = 3;
+const int DHT_ERROR = 999;
  
-String to_email = "PUTMAILHERE@gmail.com";  // The email address to send the message to
+String to_email = "etay1283@gmail.com";  // The email address to send the message to
 String to_sms = "5551234567@carriersmsportal.com"; // Look up your carrier's Email-to-SMS gateway here: https://martinfitzpatrick.name/list-of-email-to-sms-gateways/
 
 String subject_line = "Fridge Temprature Alert";
 String message;
 
-double previousTemp ; 
-double currTemp ;
+double previousTemp; 
 /**
  * Fridguino by Idan Ben Zvi and Itay Ceder (c) 12/2018
  * The sketch sets up a wifi access point initially to get mail and wifi credentials.
@@ -50,12 +50,7 @@ double currTemp ;
   Serial.println("Connected!");
     }
 
-struct tempratureReading {
-  String errorMsg;
-  double temp;
-}
-
-tempratureReading measureTemprature() {
+double measureTemprature() {
   dht.read();
   switch(dht.getState()) {    
     case DHT_OK:
@@ -65,38 +60,44 @@ tempratureReading measureTemprature() {
       Serial.print("Humidity = ");
       Serial.print(dht.getHumidity());
       Serial.println(" %");
-      return new tempratureReading(null,dht.getTemperatureC());
+      return dht.getTemperatureC();
     case DHT_ERROR_CHECKSUM:
-      return new tempratureReading("Error: Checksum error, sensor is broken",999);
+      return DHT_ERROR;
     case DHT_ERROR_TIMEOUT:
-      return new tempratureReading("Error: timeout error, sensor is broken",999);
+      return DHT_ERROR;
     case DHT_ERROR_NO_REPLY:
-      return new tempratureReading("Error: no response error, sensor is broken",999);
+      return DHT_ERROR;
   }
 }
 
-boolean sendNotificaiton() {
-  //TODO send email once the temprature is above a certain threshold
- 
+void sendNotificaiton(String message) {
+  Serial.print("Sending Email: " + message);
+  alert.send(subject_line,message,to_email);
 }
      
 void loop() {
     while(true) {
-    delay(60 * 15 * 1000)
-    //todo add retry mechanism
-    double currTemprature = measureTemprature()
-     
-    //double deltaTemprature = 
-
-
+    delay(60 * 15 * 1000);
+    int retryAttemps = 3;
+    double currTemprature;
     
-    message = "Device  "+ String(ESP.getChipId())+" : Temprature warning! the current temprature is " + currTemprature ;
-
-    if(currTemprature > criticalTemprature) {
-      Serial.print("Sending Email...");
-      alert.send(subject_line,message,to_email))
+    do {
+      currTemprature = measureTemprature();
+      retryAttemps--;    
+    } while (currTemprature != DHT_ERROR && retryAttemps > 0);
+    
+    double currentDeltaTemp = currTemprature - previousTemp;
+    previousTemp = currTemprature;
+    
+    if (currTemprature == DHT_ERROR) {
+      message = "Device  " + String(ESP.getChipId()) + " Error: no temprature response return, sensor is broken";
+      sendNotificaiton(message);
+    } else if (currentDeltaTemp > CRITCAL_DELTA){
+      message = "Device  " + String(ESP.getChipId()) + " : Delta Temprature is above trashold! the current temprature is " + currTemprature;
+      sendNotificaiton(message);
+    } else if(currTemprature > CRITCAL_TEMP) {
+      message = "Device  " + String(ESP.getChipId()) + " : Temprature is above trashold! the current temprature is " + currTemprature;
+      sendNotificaiton(message);
     }
-    
-    
-
+  }
 }

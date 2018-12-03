@@ -87,7 +87,6 @@ void loop() {
     } while (currTemprature != DHT_ERROR && retryAttemps > 0);
     
     double currentDeltaTemp = currTemprature - previousTemp;
-    previousTemp = currTemprature;
     
     if (currTemprature == DHT_ERROR) {
       message = "Device  " + String(ESP.getChipId()) + " Error: no temprature response return, sensor is broken";
@@ -98,6 +97,10 @@ void loop() {
     } else if(currTemprature > CRITCAL_TEMP) {
       message = "Device  " + String(ESP.getChipId()) + " : Temprature is above trashold! the current temprature is " + currTemprature;
       sendNotificaiton(message);
+    }
+    
+    if (currTemprature != DHT_ERROR) {
+      previousTemp = currTemprature;
     }
   }
 }
